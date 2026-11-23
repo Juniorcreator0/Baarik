@@ -70,6 +70,39 @@
   lb.addEventListener('click', function (e) { if (e.target === lb || e.target.closest('.lb-close')) closeLb(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !lb.hidden) closeLb(); });
 
+  /* ---------- WhatsApp links ---------- */
+  var WA = (window.BAARIK_WA || '').replace(/\D/g, '');
+  function waHref() {
+    var t = (window.BAARIK_WA_TEXT || {})[doc.lang === 'en' ? 'en' : 'ar'] || '';
+    return 'https://wa.me/' + WA + (t ? '?text=' + encodeURIComponent(t) : '');
+  }
+  function refreshWa() {
+    document.querySelectorAll('[data-wa]').forEach(function (a) {
+      if (!WA) { a.hidden = true; return; }
+      a.hidden = false; a.href = waHref();
+    });
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest('[data-wa]');
+    if (a && WA) { a.href = waHref(); if (window.fbq) try { fbq('track', 'Contact'); } catch (x) {} if (window.gtag) try { gtag('event', 'contact_whatsapp'); } catch (x) {} }
+  });
+  refreshWa();
+
+  /* ---------- case studies: show more ---------- */
+  var moreBtn = document.getElementById('cases-more');
+  if (moreBtn) {
+    var moreLabel = moreBtn.querySelector('span').textContent;
+    moreBtn.addEventListener('click', function () {
+      var open = moreBtn.getAttribute('aria-expanded') !== 'true';
+      document.querySelectorAll('article[data-more]').forEach(function (a) { a.hidden = !open; });
+      moreBtn.setAttribute('aria-expanded', open);
+      var span = moreBtn.querySelector('span');
+      var en = doc.lang === 'en';
+      span.textContent = open ? (en ? 'Show fewer' : 'عرض حالات أقل') : (en ? (window.BAARIK_EXTRA || {})[moreLabel] || moreLabel : moreLabel);
+      if (!open) document.getElementById('cases').scrollIntoView({ behavior: 'smooth' });
+    });
+  }
+
   /* ---------- contact form -> Google Sheet ---------- */
   var SHEET_URL = 'https://script.google.com/macros/s/AKfycbxCJ36j7GcjqYNZ6DnP4lDAnGN3lWszlipqCQ-NZTh2_LzL-b3Mw-_9TgbVD70TD0xe4w/exec';
   var form = document.getElementById('contact-form');
@@ -105,11 +138,18 @@
     box.className = 'flex h-full flex-col items-center justify-center rounded-2xl border border-primary/30 bg-primary/5 p-10 text-center';
     box.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-12 w-12 text-primary"><circle cx="12" cy="12" r="10"></circle><path d="m9 12 2 2 4-4"></path></svg><p class="mt-4 text-base font-semibold"></p>';
     box.querySelector('p').textContent = window.BAARIK_SUCCESS[doc.lang === 'en' ? 'en' : 'ar'];
+    if (WA) {
+      var w = document.createElement('a');
+      w.setAttribute('data-wa', ''); w.href = waHref(); w.target = '_blank'; w.rel = 'noopener';
+      w.className = 'bk-wa-inline mt-5';
+      w.textContent = doc.lang === 'en' ? 'Want a faster reply? Message us on WhatsApp' : 'تبغى رد أسرع؟ كلّمنا واتساب';
+      box.appendChild(w);
+    }
     form.replaceWith(box);
   }
 
   /* ---------- language toggle (AR <-> EN) ---------- */
-  var AR2EN = window.BAARIK_I18N || {}, EN2AR = {};
+  var AR2EN = Object.assign({}, window.BAARIK_I18N || {}, window.BAARIK_EXTRA || {}), EN2AR = {};
   Object.keys(AR2EN).forEach(function (k) { EN2AR[AR2EN[k]] = k; });
   function tr(str, map) {
     var t = str.trim(); if (!t) return str;
@@ -135,6 +175,7 @@
     if (doc.lang === lang) return;
     translate(lang === 'en' ? AR2EN : EN2AR);
     doc.lang = lang; doc.dir = lang === 'ar' ? 'rtl' : 'ltr';
+    refreshWa();
     if (save) try { localStorage.setItem('baarik-lang', lang); } catch (e) {}
   }
   document.getElementById('lang-toggle').addEventListener('click', function () {
