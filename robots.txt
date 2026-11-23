@@ -1,2 +1,4 @@
 User-agent: *
 Allow: /
+
+Sitemap: https://juniorcreator0.github.io/Baarik/sitemap.xml
