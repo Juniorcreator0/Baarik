@@ -70,16 +70,43 @@
   lb.addEventListener('click', function (e) { if (e.target === lb || e.target.closest('.lb-close')) closeLb(); });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !lb.hidden) closeLb(); });
 
-  /* ---------- contact form ---------- */
+  /* ---------- contact form -> Google Sheet ---------- */
+  var SHEET_URL = 'https://script.google.com/macros/s/AKfycbxCJ36j7GcjqYNZ6DnP4lDAnGN3lWszlipqCQ-NZTh2_LzL-b3Mw-_9TgbVD70TD0xe4w/exec';
   var form = document.getElementById('contact-form');
-  if (form) form.addEventListener('submit', function (e) {
-    e.preventDefault();
+  if (form) {
+    var f = form.querySelectorAll('input, select, textarea');
+    ['name', 'phone', 'business', 'revenue', 'message'].forEach(function (n, i) { if (f[i]) f[i].name = n; });
+    var hp = document.createElement('input');  // honeypot against spam bots
+    hp.name = 'website'; hp.tabIndex = -1; hp.autocomplete = 'off'; hp.setAttribute('aria-hidden', 'true');
+    hp.style.cssText = 'position:absolute;left:-9999px;width:1px;height:1px;opacity:0';
+    form.appendChild(hp);
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var btn = form.querySelector('button[type="submit"]');
+      if (btn) { btn.disabled = true; btn.style.opacity = '.7'; }
+      var data = new URLSearchParams(new FormData(form));
+      data.append('lang', doc.lang); data.append('page', location.href + (document.referrer ? ' | ref: ' + document.referrer : ''));
+      fetch(SHEET_URL, { method: 'POST', mode: 'no-cors', body: data })
+        .then(showSuccess)
+        .catch(function () {
+          if (btn) { btn.disabled = false; btn.style.opacity = ''; }
+          alertBox(doc.lang === 'en' ? 'Something went wrong, please try again.' : 'حصلت مشكلة في الإرسال، جرّب تاني من فضلك.');
+        });
+    });
+  }
+  function alertBox(msg) {
+    var p = form.querySelector('.form-error') || document.createElement('p');
+    p.className = 'form-error sm:col-span-2 text-sm'; p.style.color = '#f87171'; p.textContent = msg; form.appendChild(p);
+  }
+  function showSuccess() {
+    if (window.fbq) try { fbq('track', 'Lead'); } catch (e) {}
+    if (window.gtag) try { gtag('event', 'generate_lead'); } catch (e) {}
     var box = document.createElement('div');
     box.className = 'flex h-full flex-col items-center justify-center rounded-2xl border border-primary/30 bg-primary/5 p-10 text-center';
     box.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-12 w-12 text-primary"><circle cx="12" cy="12" r="10"></circle><path d="m9 12 2 2 4-4"></path></svg><p class="mt-4 text-base font-semibold"></p>';
     box.querySelector('p').textContent = window.BAARIK_SUCCESS[doc.lang === 'en' ? 'en' : 'ar'];
     form.replaceWith(box);
-  });
+  }
 
   /* ---------- language toggle (AR <-> EN) ---------- */
   var AR2EN = window.BAARIK_I18N || {}, EN2AR = {};
